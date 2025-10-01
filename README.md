@@ -24,3 +24,8 @@ target/employee-analyzer-1.0-SNAPSHOT.jar
 
 java -jar target/employee-analyzer-1.0-SNAPSHOT.jar employees.csv
 
+# Testing
+
+mvn test
+
+
