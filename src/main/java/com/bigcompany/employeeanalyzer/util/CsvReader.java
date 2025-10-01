@@ -2,42 +2,45 @@ package com.bigcompany.employeeanalyzer.util;
 
 import com.bigcompany.employeeanalyzer.model.Employee;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.util.HashMap;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class CsvReader {
 
-    public static Map<Integer, Employee> readEmployees(String filePath) throws Exception {
-        Map<Integer, Employee> employees = new HashMap<>();
+    private static final int COL_ID = 0;
+    private static final int COL_FIRST_NAME = 1;
+    private static final int COL_LAST_NAME = 2;
+    private static final int COL_SALARY = 3;
+    private static final int COL_MANAGER_ID = 4;
 
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            br.readLine(); // skip header
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
-                int id = Integer.parseInt(parts[0].trim());
-                String firstName = parts[1].trim();
-                String lastName = parts[2].trim();
-                double salary = Double.parseDouble(parts[3].trim());
-                Integer managerId = parts.length > 4 && !parts[4].trim().isEmpty()
-                        ? Integer.parseInt(parts[4].trim()) : null;
+    public static Map<Integer, Employee> readEmployees(String filePath) throws IOException {
+        var employees = Files.lines(Path.of(filePath))
+                .skip(1)
+                .map(CsvReader::parseEmployee)
+                .collect(Collectors.toMap(Employee::getId, e -> e));
 
-                employees.put(id, new Employee(id, firstName, lastName, salary, managerId));
-            }
-        }
+        employees.values().forEach(e ->
+                Optional.ofNullable(e.getManagerId())
+                        .map(employees::get)
+                        .ifPresent(manager -> manager.getSubordinates().add(e)));
 
-        // Build hierarchy
-        for (Employee e : employees.values()) {
-            if (e.getManagerId() != null) {
-                Employee manager = employees.get(e.getManagerId());
-                if (manager != null) {
-                    manager.getSubordinates().add(e);
-                }
-            }
-        }
         return employees;
     }
-}
 
+    private static Employee parseEmployee(String line) {
+        var parts = line.split(",");
+        var id = Integer.parseInt(parts[COL_ID].trim());
+        var firstName = parts[COL_FIRST_NAME].trim();
+        var lastName = parts[COL_LAST_NAME].trim();
+        var salary = Double.parseDouble(parts[COL_SALARY].trim());
+        Integer managerId = (parts.length > COL_MANAGER_ID && !parts[COL_MANAGER_ID].trim().isEmpty())
+                ? Integer.parseInt(parts[COL_MANAGER_ID].trim())
+                : null;
+
+        return new Employee(id, firstName, lastName, salary, managerId);
+    }
+}
